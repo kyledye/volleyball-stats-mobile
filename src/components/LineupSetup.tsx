@@ -139,7 +139,7 @@ export default function LineupSetup({
                       <Text style={styles.playerName} numberOfLines={1}>
                         {player.firstName}
                       </Text>
-                      <Ionicons name="close-circle" size={16} color="#fa5252" style={styles.removeIcon} />
+                      <Ionicons name="close-circle" size={14} color="#fa5252" style={styles.removeIcon} />
                     </>
                   ) : (
                     <>
@@ -173,7 +173,7 @@ export default function LineupSetup({
                       <Text style={styles.playerName} numberOfLines={1}>
                         {player.firstName}
                       </Text>
-                      <Ionicons name="close-circle" size={16} color="#fa5252" style={styles.removeIcon} />
+                      <Ionicons name="close-circle" size={14} color="#fa5252" style={styles.removeIcon} />
                     </>
                   ) : (
                     <>
@@ -192,17 +192,15 @@ export default function LineupSetup({
 
       {/* Libero */}
       <View style={styles.liberoContainer}>
-        <Text style={styles.sectionTitle}>Libero (Optional)</Text>
+        <Text style={styles.liberoLabel}>Libero:</Text>
         {liberoId ? (
           <TouchableOpacity style={styles.liberoSlot} onPress={handleClearLibero}>
-            <View style={styles.liberoInfo}>
-              <Text style={styles.playerNumber}>#{getPlayerById(liberoId)?.number}</Text>
-              <Text style={styles.playerName}>{getPlayerById(liberoId)?.firstName}</Text>
-            </View>
-            <Ionicons name="close-circle" size={20} color="#fa5252" />
+            <Text style={styles.liberoPlayerNumber}>#{getPlayerById(liberoId)?.number}</Text>
+            <Text style={styles.liberoPlayerName}>{getPlayerById(liberoId)?.firstName}</Text>
+            <Ionicons name="close-circle" size={16} color="#fa5252" />
           </TouchableOpacity>
         ) : (
-          <Text style={styles.liberoHint}>Select from roster below</Text>
+          <Text style={styles.liberoHint}>Long-press player to set</Text>
         )}
       </View>
 
@@ -358,47 +356,47 @@ export default function LineupSetup({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
-    padding: 16,
+    padding: 12,
     marginBottom: 8,
   },
   title: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#212529',
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#868E96',
     textAlign: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#495057',
     marginBottom: 8,
   },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#495057',
+    marginBottom: 4,
+  },
   courtContainer: {
-    marginBottom: 16,
+    marginBottom: 8,
   },
   courtGrid: {
     backgroundColor: '#e8f4ea',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 6,
+    padding: 8,
     borderWidth: 2,
     borderColor: '#40c057',
   },
   courtRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   positionSlot: {
-    width: '30%',
-    aspectRatio: 1,
+    width: '31%',
+    height: 52,
     backgroundColor: '#fff',
-    borderRadius: 8,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -411,77 +409,91 @@ const styles = StyleSheet.create({
     backgroundColor: '#e7f5ff',
   },
   positionNumber: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#dee2e6',
   },
   positionLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#adb5bd',
   },
   playerNumber: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#228BE6',
   },
   playerName: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#495057',
   },
   removeIcon: {
     position: 'absolute',
-    top: 2,
-    right: 2,
+    top: 1,
+    right: 1,
   },
   liberoContainer: {
-    marginBottom: 16,
-    padding: 12,
+    marginBottom: 8,
+    padding: 8,
     backgroundColor: '#fff9db',
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#fab005',
-  },
-  liberoSlot: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  liberoInfo: {
+  liberoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#495057',
+  },
+  liberoSlot: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+  },
+  liberoPlayerNumber: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fab005',
+  },
+  liberoPlayerName: {
+    fontSize: 12,
+    color: '#495057',
   },
   liberoHint: {
     color: '#868E96',
     fontStyle: 'italic',
+    fontSize: 11,
   },
   rosterContainer: {
-    marginBottom: 16,
+    marginBottom: 8,
   },
   rosterHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   addPlayerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
   },
   addPlayerText: {
     color: '#228BE6',
     fontWeight: '500',
+    fontSize: 12,
   },
   rosterScroll: {
-    marginBottom: 4,
+    marginBottom: 2,
   },
   rosterPlayer: {
-    width: 70,
-    padding: 8,
-    marginRight: 8,
+    width: 56,
+    padding: 6,
+    marginRight: 6,
     backgroundColor: '#f8f9fa',
-    borderRadius: 8,
+    borderRadius: 6,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#dee2e6',
@@ -495,12 +507,12 @@ const styles = StyleSheet.create({
     borderColor: '#fab005',
   },
   rosterNumber: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#495057',
   },
   rosterName: {
-    fontSize: 11,
+    fontSize: 9,
     color: '#868E96',
   },
   rosterTextAssigned: {
@@ -508,74 +520,76 @@ const styles = StyleSheet.create({
   },
   liberoBadge: {
     position: 'absolute',
-    top: 2,
-    right: 2,
+    top: 1,
+    right: 1,
     backgroundColor: '#fab005',
-    borderRadius: 8,
-    width: 16,
-    height: 16,
+    borderRadius: 6,
+    width: 14,
+    height: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   liberoBadgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: 'bold',
   },
   rosterHint: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#adb5bd',
     textAlign: 'center',
   },
   emptyRoster: {
-    padding: 20,
+    padding: 12,
     alignItems: 'center',
   },
   emptyText: {
     color: '#868E96',
-    marginBottom: 12,
+    marginBottom: 8,
+    fontSize: 12,
   },
   addFirstButton: {
     backgroundColor: '#228BE6',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
   },
   addFirstText: {
     color: '#fff',
     fontWeight: '600',
+    fontSize: 12,
   },
   addPlayerForm: {
     backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
+    padding: 10,
+    borderRadius: 6,
+    marginBottom: 8,
   },
   addPlayerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   addPlayerTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   addPlayerRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
+    gap: 6,
+    marginBottom: 8,
   },
   addPlayerInput: {
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#dee2e6',
-    borderRadius: 6,
-    padding: 10,
-    fontSize: 14,
+    borderRadius: 4,
+    padding: 8,
+    fontSize: 13,
   },
   numberInput: {
-    width: 50,
+    width: 44,
     textAlign: 'center',
   },
   nameInput: {
@@ -583,8 +597,8 @@ const styles = StyleSheet.create({
   },
   addPlayerSubmit: {
     backgroundColor: '#228BE6',
-    padding: 12,
-    borderRadius: 6,
+    padding: 10,
+    borderRadius: 4,
     alignItems: 'center',
   },
   addPlayerSubmitDisabled: {
@@ -593,11 +607,12 @@ const styles = StyleSheet.create({
   addPlayerSubmitText: {
     color: '#fff',
     fontWeight: '600',
+    fontSize: 13,
   },
   startButton: {
     backgroundColor: '#40c057',
-    padding: 16,
-    borderRadius: 8,
+    padding: 12,
+    borderRadius: 6,
     alignItems: 'center',
   },
   startButtonDisabled: {
@@ -605,7 +620,7 @@ const styles = StyleSheet.create({
   },
   startButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });

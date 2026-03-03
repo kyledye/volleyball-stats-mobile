@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,7 @@ import {
   ScrollView,
   TextInput,
   Alert,
-  LayoutRectangle,
 } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  runOnJS,
-} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LocalPlayer } from '../lib/database';
 
@@ -27,107 +19,6 @@ interface LineupSetupProps {
   loading?: boolean;
 }
 
-interface PositionLayout {
-  position: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-// Draggable player card component
-function DraggablePlayer({
-  player,
-  isAssigned,
-  isLibero,
-  onDragEnd,
-  onLongPress,
-  onTap,
-}: {
-  player: LocalPlayer;
-  isAssigned: boolean;
-  isLibero: boolean;
-  onDragEnd: (playerId: string, x: number, y: number) => void;
-  onLongPress: () => void;
-  onTap: () => void;
-}) {
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const isDragging = useSharedValue(false);
-  const scale = useSharedValue(1);
-
-  const panGesture = Gesture.Pan()
-    .onStart(() => {
-      isDragging.value = true;
-      scale.value = withSpring(1.1);
-    })
-    .onUpdate((event) => {
-      translateX.value = event.translationX;
-      translateY.value = event.translationY;
-    })
-    .onEnd((event) => {
-      isDragging.value = false;
-      scale.value = withSpring(1);
-      runOnJS(onDragEnd)(player.id, event.absoluteX, event.absoluteY);
-      translateX.value = withSpring(0);
-      translateY.value = withSpring(0);
-    });
-
-  const longPressGesture = Gesture.LongPress()
-    .minDuration(500)
-    .onEnd(() => {
-      runOnJS(onLongPress)();
-    });
-
-  const tapGesture = Gesture.Tap()
-    .onEnd(() => {
-      runOnJS(onTap)();
-    });
-
-  const composedGesture = Gesture.Race(
-    panGesture,
-    Gesture.Simultaneous(longPressGesture, tapGesture)
-  );
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { scale: scale.value },
-    ],
-    zIndex: isDragging.value ? 100 : 1,
-    opacity: isDragging.value ? 0.9 : 1,
-  }));
-
-  return (
-    <GestureDetector gesture={composedGesture}>
-      <Animated.View
-        style={[
-          styles.rosterPlayer,
-          isAssigned && styles.rosterPlayerAssigned,
-          isLibero && styles.rosterPlayerLibero,
-          animatedStyle,
-        ]}
-      >
-        <Text style={[styles.rosterNumber, isAssigned && styles.rosterTextAssigned]}>
-          #{player.number}
-        </Text>
-        <Text
-          style={[styles.rosterName, isAssigned && styles.rosterTextAssigned]}
-          numberOfLines={1}
-        >
-          {player.firstName}
-        </Text>
-        {isLibero && (
-          <View style={styles.liberoBadge}>
-            <Text style={styles.liberoBadgeText}>L</Text>
-          </View>
-        )}
-      </Animated.View>
-    </GestureDetector>
-  );
-}
-
 export default function LineupSetup({
   players,
   teamName,
@@ -137,13 +28,12 @@ export default function LineupSetup({
 }: LineupSetupProps) {
   const [positions, setPositions] = useState<Record<number, string>>({});
   const [liberoId, setLiberoId] = useState<string | null>(null);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [newPlayerNumber, setNewPlayerNumber] = useState('');
   const [newPlayerFirstName, setNewPlayerFirstName] = useState('');
   const [newPlayerLastName, setNewPlayerLastName] = useState('');
   const [addingPlayer, setAddingPlayer] = useState(false);
-  const [positionLayouts, setPositionLayouts] = useState<PositionLayout[]>([]);
-  const containerRef = useRef<View>(null);
 
   const assignedPlayerIds = Object.values(positions);
 
@@ -159,6 +49,7 @@ export default function LineupSetup({
     } else {
       setPositions(prev => ({ ...prev, [position]: playerId }));
     }
+    setSelectedPlayerId(null);
   };
 
   const handleRemovePosition = (position: number) => {
@@ -169,13 +60,43 @@ export default function LineupSetup({
     });
   };
 
+  const handlePositionTap = (position: number) => {
+    const currentPlayerId = positions[position];
+
+    if (selectedPlayerId) {
+      // A player is selected - place them in this position
+      if (currentPlayerId) {
+        // Position is filled - swap the players
+        const selectedPlayerCurrentPos = Object.entries(positions).find(([_, id]) => id === selectedPlayerId);
+        if (selectedPlayerCurrentPos) {
+          // Both players are on court - swap their positions
+          setPositions(prev => ({
+            ...prev,
+            [position]: selectedPlayerId,
+            [parseInt(selectedPlayerCurrentPos[0])]: currentPlayerId,
+          }));
+        } else {
+          // Selected player is from bench - replace court player
+          setPositions(prev => ({ ...prev, [position]: selectedPlayerId }));
+        }
+      } else {
+        // Position is empty - place the selected player
+        handleAssignPosition(position, selectedPlayerId);
+      }
+      setSelectedPlayerId(null);
+    } else if (currentPlayerId) {
+      // No player selected, but position is filled - select this player for moving
+      setSelectedPlayerId(currentPlayerId);
+    }
+  };
+
   const handleSetLibero = (playerId: string) => {
-    // Remove from court positions if assigned
     const positionEntry = Object.entries(positions).find(([_, id]) => id === playerId);
     if (positionEntry) {
       handleRemovePosition(parseInt(positionEntry[0]));
     }
     setLiberoId(playerId);
+    setSelectedPlayerId(null);
   };
 
   const handleClearLibero = () => {
@@ -216,76 +137,41 @@ export default function LineupSetup({
     onStartMatch(positions, liberoId);
   };
 
-  const handleDragEnd = (playerId: string, absoluteX: number, absoluteY: number) => {
-    // Find which position the player was dropped on
-    for (const layout of positionLayouts) {
-      if (
-        absoluteX >= layout.x &&
-        absoluteX <= layout.x + layout.width &&
-        absoluteY >= layout.y &&
-        absoluteY <= layout.y + layout.height
-      ) {
-        // Check if position is already filled
-        const currentPlayerId = positions[layout.position];
-        if (currentPlayerId && currentPlayerId !== playerId) {
-          // Swap players
-          const draggedPlayerPos = Object.entries(positions).find(([_, id]) => id === playerId);
-          if (draggedPlayerPos) {
-            setPositions(prev => ({
-              ...prev,
-              [layout.position]: playerId,
-              [parseInt(draggedPlayerPos[0])]: currentPlayerId,
-            }));
-          } else {
-            // Dragged from bench, just replace
-            handleAssignPosition(layout.position, playerId);
-          }
-        } else {
-          handleAssignPosition(layout.position, playerId);
-        }
-        return;
-      }
-    }
-  };
-
-  const measurePosition = (position: number, event: { nativeEvent: { layout: LayoutRectangle } }) => {
-    const { x, y, width, height } = event.nativeEvent.layout;
-    // We need absolute coordinates, so measure relative to screen
-    containerRef.current?.measureInWindow((containerX, containerY) => {
-      setPositionLayouts(prev => {
-        const filtered = prev.filter(p => p.position !== position);
-        return [...filtered, { position, x: containerX + x, y: containerY + y, width, height }];
-      });
-    });
-  };
-
   const getPlayerById = (id: string) => players.find(p => p.id === id);
 
   const renderPositionSlot = (pos: number, label: string) => {
     const player = positions[pos] ? getPlayerById(positions[pos]) : null;
+    const isSelected = player && player.id === selectedPlayerId;
+    const canPlace = selectedPlayerId && !player;
+
     return (
       <TouchableOpacity
         key={pos}
-        style={[styles.positionSlot, player && styles.positionFilled]}
-        onLayout={(e) => measurePosition(pos, e)}
-        onPress={() => {
-          if (player) {
-            handleRemovePosition(pos);
-          }
-        }}
+        style={[
+          styles.positionSlot,
+          player && styles.positionFilled,
+          isSelected && styles.positionSelected,
+          canPlace && styles.positionCanPlace,
+        ]}
+        onPress={() => handlePositionTap(pos)}
       >
         {player ? (
           <>
-            <Text style={styles.playerNumber}>#{player.number}</Text>
+            <Text style={[styles.playerNumber, isSelected && styles.playerNumberSelected]}>
+              #{player.number}
+            </Text>
             <Text style={styles.playerName} numberOfLines={1}>
               {player.firstName}
             </Text>
-            <Ionicons name="close-circle" size={14} color="#fa5252" style={styles.removeIcon} />
           </>
         ) : (
           <>
-            <Text style={styles.positionNumber}>{pos}</Text>
-            <Text style={styles.positionLabel}>{label}</Text>
+            <Text style={[styles.positionNumber, canPlace && styles.positionNumberHighlight]}>
+              {pos}
+            </Text>
+            <Text style={[styles.positionLabel, canPlace && styles.positionLabelHighlight]}>
+              {label}
+            </Text>
           </>
         )}
       </TouchableOpacity>
@@ -293,21 +179,31 @@ export default function LineupSetup({
   };
 
   return (
-    <View style={styles.container} ref={containerRef}>
+    <View style={styles.container}>
       <Text style={styles.title}>Set Up Lineup</Text>
       <Text style={styles.subtitle}>{teamName}</Text>
 
+      {/* Selected Player Indicator */}
+      {selectedPlayerId && (
+        <View style={styles.selectedBanner}>
+          <Text style={styles.selectedBannerText}>
+            Tap position for #{getPlayerById(selectedPlayerId)?.number} {getPlayerById(selectedPlayerId)?.firstName}
+          </Text>
+          <TouchableOpacity onPress={() => setSelectedPlayerId(null)}>
+            <Text style={styles.selectedBannerCancel}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Court Positions */}
       <View style={styles.courtContainer}>
-        <Text style={styles.sectionTitle}>Starting 6 (drag players here)</Text>
+        <Text style={styles.sectionTitle}>Starting 6</Text>
         <View style={styles.courtGrid}>
-          {/* Front Row */}
           <View style={styles.courtRow}>
             {renderPositionSlot(4, 'OH')}
             {renderPositionSlot(3, 'MH')}
             {renderPositionSlot(2, 'RS')}
           </View>
-          {/* Back Row */}
           <View style={styles.courtRow}>
             {renderPositionSlot(5, 'OH')}
             {renderPositionSlot(6, 'MH')}
@@ -330,7 +226,7 @@ export default function LineupSetup({
         )}
       </View>
 
-      {/* Available Players */}
+      {/* Roster */}
       <View style={styles.rosterContainer}>
         <View style={styles.rosterHeader}>
           <Text style={styles.sectionTitle}>Roster</Text>
@@ -339,7 +235,7 @@ export default function LineupSetup({
             onPress={() => setShowAddPlayer(true)}
           >
             <Ionicons name="add" size={20} color="#228BE6" />
-            <Text style={styles.addPlayerText}>Add Player</Text>
+            <Text style={styles.addPlayerText}>Add</Text>
           </TouchableOpacity>
         </View>
 
@@ -354,42 +250,64 @@ export default function LineupSetup({
             </TouchableOpacity>
           </View>
         ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.rosterScroll}
-            contentContainerStyle={styles.rosterContent}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.rosterScroll}>
             {players.map(player => {
               const isAssigned = assignedPlayerIds.includes(player.id);
               const isLibero = player.id === liberoId;
+              const isSelected = player.id === selectedPlayerId;
 
               return (
-                <DraggablePlayer
+                <TouchableOpacity
                   key={player.id}
-                  player={player}
-                  isAssigned={isAssigned}
-                  isLibero={isLibero}
-                  onDragEnd={handleDragEnd}
+                  style={[
+                    styles.rosterPlayer,
+                    isAssigned && styles.rosterPlayerAssigned,
+                    isLibero && styles.rosterPlayerLibero,
+                    isSelected && styles.rosterPlayerSelected,
+                  ]}
+                  onPress={() => {
+                    if (isLibero) {
+                      handleClearLibero();
+                    } else if (isSelected) {
+                      setSelectedPlayerId(null);
+                    } else {
+                      setSelectedPlayerId(player.id);
+                    }
+                  }}
                   onLongPress={() => {
-                    if (!isAssigned && !isLibero) {
+                    if (!isLibero) {
                       handleSetLibero(player.id);
                     }
                   }}
-                  onTap={() => {
-                    if (isLibero) {
-                      handleClearLibero();
-                    } else if (isAssigned) {
-                      const pos = Object.entries(positions).find(([_, id]) => id === player.id);
-                      if (pos) handleRemovePosition(parseInt(pos[0]));
-                    }
-                  }}
-                />
+                >
+                  <Text style={[
+                    styles.rosterNumber,
+                    isAssigned && styles.rosterTextAssigned,
+                    isSelected && styles.rosterTextSelected,
+                  ]}>
+                    #{player.number}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.rosterName,
+                      isAssigned && styles.rosterTextAssigned,
+                      isSelected && styles.rosterTextSelected,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {player.firstName}
+                  </Text>
+                  {isLibero && (
+                    <View style={styles.liberoBadge}>
+                      <Text style={styles.liberoBadgeText}>L</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
               );
             })}
           </ScrollView>
         )}
-        <Text style={styles.rosterHint}>Drag to court • Long press for libero • Tap to remove</Text>
+        <Text style={styles.rosterHint}>Tap player → tap position • Long press = libero</Text>
       </View>
 
       {/* Add Player Form */}
@@ -469,6 +387,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
+  selectedBanner: {
+    backgroundColor: '#228BE6',
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  selectedBannerText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  selectedBannerCancel: {
+    color: '#fff',
+    opacity: 0.8,
+    fontSize: 12,
+  },
   sectionTitle: {
     fontSize: 12,
     fontWeight: '600',
@@ -506,28 +443,41 @@ const styles = StyleSheet.create({
     borderStyle: 'solid',
     backgroundColor: '#e7f5ff',
   },
+  positionSelected: {
+    borderColor: '#fa5252',
+    backgroundColor: '#fff5f5',
+  },
+  positionCanPlace: {
+    borderColor: '#40c057',
+    borderStyle: 'solid',
+    backgroundColor: '#d3f9d8',
+  },
   positionNumber: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#dee2e6',
   },
+  positionNumberHighlight: {
+    color: '#40c057',
+  },
   positionLabel: {
     fontSize: 9,
     color: '#adb5bd',
+  },
+  positionLabelHighlight: {
+    color: '#40c057',
   },
   playerNumber: {
     fontSize: 14,
     fontWeight: 'bold',
     color: '#228BE6',
   },
+  playerNumberSelected: {
+    color: '#fa5252',
+  },
   playerName: {
     fontSize: 10,
     color: '#495057',
-  },
-  removeIcon: {
-    position: 'absolute',
-    top: 1,
-    right: 1,
   },
   liberoContainer: {
     marginBottom: 8,
@@ -586,9 +536,6 @@ const styles = StyleSheet.create({
   rosterScroll: {
     marginBottom: 2,
   },
-  rosterContent: {
-    paddingVertical: 4,
-  },
   rosterPlayer: {
     width: 56,
     padding: 6,
@@ -607,6 +554,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff9db',
     borderColor: '#fab005',
   },
+  rosterPlayerSelected: {
+    backgroundColor: '#228BE6',
+    borderColor: '#1971c2',
+  },
   rosterNumber: {
     fontSize: 14,
     fontWeight: 'bold',
@@ -618,6 +569,9 @@ const styles = StyleSheet.create({
   },
   rosterTextAssigned: {
     color: '#228BE6',
+  },
+  rosterTextSelected: {
+    color: '#fff',
   },
   liberoBadge: {
     position: 'absolute',

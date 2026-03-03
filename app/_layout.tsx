@@ -5,7 +5,6 @@ import { StatusBar } from 'expo-status-bar';
 import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { OfflineProvider } from '../src/contexts/OfflineContext';
 import { createAsyncStoragePersister } from '../src/lib/queryPersister';
@@ -77,21 +76,19 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <PersistQueryClientProvider
-        client={queryClient}
-        persistOptions={{ persister }}
-      >
-        <SafeAreaProvider>
-          <StatusBar style="auto" />
-          <OfflineProvider>
-            <AuthProvider>
-              <RootLayoutNav />
-            </AuthProvider>
-          </OfflineProvider>
-        </SafeAreaProvider>
-      </PersistQueryClientProvider>
-    </GestureHandlerRootView>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister }}
+    >
+      <SafeAreaProvider>
+        <StatusBar style="auto" />
+        <OfflineProvider>
+          <AuthProvider>
+            <RootLayoutNav />
+          </AuthProvider>
+        </OfflineProvider>
+      </SafeAreaProvider>
+    </PersistQueryClientProvider>
   );
 }
 

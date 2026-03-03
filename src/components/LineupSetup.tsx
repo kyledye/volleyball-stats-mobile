@@ -38,6 +38,7 @@ export default function LineupSetup({
 }: LineupSetupProps) {
   const [positions, setPositions] = useState<Record<number, string>>({});
   const [liberoId, setLiberoId] = useState<string | null>(null);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [newPlayerNumber, setNewPlayerNumber] = useState('');
   const [newPlayerFirstName, setNewPlayerFirstName] = useState('');
@@ -50,7 +51,18 @@ export default function LineupSetup({
   );
 
   const handleAssignPosition = (position: number, playerId: string) => {
-    setPositions(prev => ({ ...prev, [position]: playerId }));
+    // If player is already in another position, remove them first
+    const existingPos = Object.entries(positions).find(([_, id]) => id === playerId);
+    if (existingPos) {
+      setPositions(prev => {
+        const newPositions = { ...prev };
+        delete newPositions[parseInt(existingPos[0])];
+        return { ...newPositions, [position]: playerId };
+      });
+    } else {
+      setPositions(prev => ({ ...prev, [position]: playerId }));
+    }
+    setSelectedPlayerId(null);
   };
 
   const handleRemovePosition = (position: number) => {
@@ -59,6 +71,36 @@ export default function LineupSetup({
       delete newPositions[position];
       return newPositions;
     });
+  };
+
+  const handlePositionTap = (position: number) => {
+    const currentPlayerId = positions[position];
+
+    if (selectedPlayerId) {
+      // A player is selected - place them in this position
+      if (currentPlayerId) {
+        // Position is filled - swap the players
+        const selectedPlayerCurrentPos = Object.entries(positions).find(([_, id]) => id === selectedPlayerId);
+        if (selectedPlayerCurrentPos) {
+          // Both players are on court - swap their positions
+          setPositions(prev => ({
+            ...prev,
+            [position]: selectedPlayerId,
+            [parseInt(selectedPlayerCurrentPos[0])]: currentPlayerId,
+          }));
+        } else {
+          // Selected player is from bench - replace court player
+          setPositions(prev => ({ ...prev, [position]: selectedPlayerId }));
+        }
+      } else {
+        // Position is empty - place the selected player
+        handleAssignPosition(position, selectedPlayerId);
+      }
+      setSelectedPlayerId(null);
+    } else if (currentPlayerId) {
+      // No player selected, but position is filled - select this player for moving
+      setSelectedPlayerId(currentPlayerId);
+    }
   };
 
   const handleSetLibero = (playerId: string) => {
@@ -115,36 +157,54 @@ export default function LineupSetup({
       <Text style={styles.title}>Set Up Lineup</Text>
       <Text style={styles.subtitle}>{teamName}</Text>
 
+      {/* Selected Player Indicator */}
+      {selectedPlayerId && (
+        <View style={styles.selectedBanner}>
+          <Text style={styles.selectedBannerText}>
+            Placing #{getPlayerById(selectedPlayerId)?.number} {getPlayerById(selectedPlayerId)?.firstName}
+          </Text>
+          <TouchableOpacity onPress={() => setSelectedPlayerId(null)}>
+            <Text style={styles.selectedBannerCancel}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Court Positions */}
       <View style={styles.courtContainer}>
-        <Text style={styles.sectionTitle}>Starting 6</Text>
+        <Text style={styles.sectionTitle}>Starting 6 {selectedPlayerId ? '(tap position to place)' : ''}</Text>
         <View style={styles.courtGrid}>
           {/* Front Row */}
           <View style={styles.courtRow}>
             {[4, 3, 2].map(pos => {
               const player = positions[pos] ? getPlayerById(positions[pos]) : null;
+              const isSelected = player && player.id === selectedPlayerId;
+              const canPlace = selectedPlayerId && !player;
               return (
                 <TouchableOpacity
                   key={pos}
-                  style={[styles.positionSlot, player && styles.positionFilled]}
-                  onPress={() => {
-                    if (player) {
-                      handleRemovePosition(pos);
-                    }
-                  }}
+                  style={[
+                    styles.positionSlot,
+                    player && styles.positionFilled,
+                    isSelected && styles.positionSelected,
+                    canPlace && styles.positionCanPlace,
+                  ]}
+                  onPress={() => handlePositionTap(pos)}
                 >
                   {player ? (
                     <>
-                      <Text style={styles.playerNumber}>#{player.number}</Text>
+                      <Text style={[styles.playerNumber, isSelected && styles.playerNumberSelected]}>
+                        #{player.number}
+                      </Text>
                       <Text style={styles.playerName} numberOfLines={1}>
                         {player.firstName}
                       </Text>
-                      <Ionicons name="close-circle" size={14} color="#fa5252" style={styles.removeIcon} />
                     </>
                   ) : (
                     <>
-                      <Text style={styles.positionNumber}>{pos}</Text>
-                      <Text style={styles.positionLabel}>
+                      <Text style={[styles.positionNumber, canPlace && styles.positionNumberHighlight]}>
+                        {pos}
+                      </Text>
+                      <Text style={[styles.positionLabel, canPlace && styles.positionLabelHighlight]}>
                         {pos === 4 ? 'OH' : pos === 3 ? 'MH' : 'RS'}
                       </Text>
                     </>
@@ -157,28 +217,34 @@ export default function LineupSetup({
           <View style={styles.courtRow}>
             {[5, 6, 1].map(pos => {
               const player = positions[pos] ? getPlayerById(positions[pos]) : null;
+              const isSelected = player && player.id === selectedPlayerId;
+              const canPlace = selectedPlayerId && !player;
               return (
                 <TouchableOpacity
                   key={pos}
-                  style={[styles.positionSlot, player && styles.positionFilled]}
-                  onPress={() => {
-                    if (player) {
-                      handleRemovePosition(pos);
-                    }
-                  }}
+                  style={[
+                    styles.positionSlot,
+                    player && styles.positionFilled,
+                    isSelected && styles.positionSelected,
+                    canPlace && styles.positionCanPlace,
+                  ]}
+                  onPress={() => handlePositionTap(pos)}
                 >
                   {player ? (
                     <>
-                      <Text style={styles.playerNumber}>#{player.number}</Text>
+                      <Text style={[styles.playerNumber, isSelected && styles.playerNumberSelected]}>
+                        #{player.number}
+                      </Text>
                       <Text style={styles.playerName} numberOfLines={1}>
                         {player.firstName}
                       </Text>
-                      <Ionicons name="close-circle" size={14} color="#fa5252" style={styles.removeIcon} />
                     </>
                   ) : (
                     <>
-                      <Text style={styles.positionNumber}>{pos}</Text>
-                      <Text style={styles.positionLabel}>
+                      <Text style={[styles.positionNumber, canPlace && styles.positionNumberHighlight]}>
+                        {pos}
+                      </Text>
+                      <Text style={[styles.positionLabel, canPlace && styles.positionLabelHighlight]}>
                         {pos === 5 ? 'OH' : pos === 6 ? 'MH' : 'SRV'}
                       </Text>
                     </>
@@ -232,6 +298,7 @@ export default function LineupSetup({
             {players.map(player => {
               const isAssigned = assignedPlayerIds.includes(player.id);
               const isLibero = player.id === liberoId;
+              const isSelected = player.id === selectedPlayerId;
 
               return (
                 <TouchableOpacity
@@ -240,30 +307,17 @@ export default function LineupSetup({
                     styles.rosterPlayer,
                     isAssigned && styles.rosterPlayerAssigned,
                     isLibero && styles.rosterPlayerLibero,
+                    isSelected && styles.rosterPlayerSelected,
                   ]}
                   onPress={() => {
                     if (isLibero) {
                       handleClearLibero();
-                    } else if (isAssigned) {
-                      // Find and remove from position
-                      const pos = Object.entries(positions).find(([_, id]) => id === player.id);
-                      if (pos) handleRemovePosition(parseInt(pos[0]));
+                    } else if (isSelected) {
+                      // Deselect if already selected
+                      setSelectedPlayerId(null);
                     } else {
-                      // Find first empty position
-                      const emptyPos = [1, 2, 3, 4, 5, 6].find(p => !positions[p]);
-                      if (emptyPos) {
-                        handleAssignPosition(emptyPos, player.id);
-                      } else {
-                        // All positions filled, offer to set as libero
-                        Alert.alert(
-                          'Set as Libero?',
-                          `All positions are filled. Set ${player.firstName} as libero?`,
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Set Libero', onPress: () => handleSetLibero(player.id) },
-                          ]
-                        );
-                      }
+                      // Select this player (works for both assigned and unassigned)
+                      setSelectedPlayerId(player.id);
                     }
                   }}
                   onLongPress={() => {
@@ -272,11 +326,19 @@ export default function LineupSetup({
                     }
                   }}
                 >
-                  <Text style={[styles.rosterNumber, isAssigned && styles.rosterTextAssigned]}>
+                  <Text style={[
+                    styles.rosterNumber,
+                    isAssigned && styles.rosterTextAssigned,
+                    isSelected && styles.rosterTextSelected,
+                  ]}>
                     #{player.number}
                   </Text>
                   <Text
-                    style={[styles.rosterName, isAssigned && styles.rosterTextAssigned]}
+                    style={[
+                      styles.rosterName,
+                      isAssigned && styles.rosterTextAssigned,
+                      isSelected && styles.rosterTextSelected,
+                    ]}
                     numberOfLines={1}
                   >
                     {player.firstName}
@@ -291,7 +353,7 @@ export default function LineupSetup({
             })}
           </ScrollView>
         )}
-        <Text style={styles.rosterHint}>Tap to assign • Long press for libero</Text>
+        <Text style={styles.rosterHint}>Tap player, then tap position • Long press for libero</Text>
       </View>
 
       {/* Add Player Form */}
@@ -371,6 +433,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
+  selectedBanner: {
+    backgroundColor: '#228BE6',
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  selectedBannerText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  selectedBannerCancel: {
+    color: '#fff',
+    opacity: 0.8,
+    fontSize: 12,
+  },
   sectionTitle: {
     fontSize: 12,
     fontWeight: '600',
@@ -408,19 +489,38 @@ const styles = StyleSheet.create({
     borderStyle: 'solid',
     backgroundColor: '#e7f5ff',
   },
+  positionSelected: {
+    borderColor: '#fa5252',
+    borderStyle: 'solid',
+    backgroundColor: '#fff5f5',
+  },
+  positionCanPlace: {
+    borderColor: '#40c057',
+    borderStyle: 'solid',
+    backgroundColor: '#d3f9d8',
+  },
   positionNumber: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#dee2e6',
   },
+  positionNumberHighlight: {
+    color: '#40c057',
+  },
   positionLabel: {
     fontSize: 9,
     color: '#adb5bd',
+  },
+  positionLabelHighlight: {
+    color: '#40c057',
   },
   playerNumber: {
     fontSize: 14,
     fontWeight: 'bold',
     color: '#228BE6',
+  },
+  playerNumberSelected: {
+    color: '#fa5252',
   },
   playerName: {
     fontSize: 10,
@@ -506,6 +606,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff9db',
     borderColor: '#fab005',
   },
+  rosterPlayerSelected: {
+    backgroundColor: '#228BE6',
+    borderColor: '#1971c2',
+  },
   rosterNumber: {
     fontSize: 14,
     fontWeight: 'bold',
@@ -517,6 +621,9 @@ const styles = StyleSheet.create({
   },
   rosterTextAssigned: {
     color: '#228BE6',
+  },
+  rosterTextSelected: {
+    color: '#fff',
   },
   liberoBadge: {
     position: 'absolute',
